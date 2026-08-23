@@ -1,0 +1,11 @@
+{
+  "format_version": [1, 1, 0],
+  "chess:chess_set": {
+    "sound": "wood",
+    "textures": {
+      "up": "chess_set_top",
+      "down": "chess_set_side",
+      "*": "chess_set_side"
+    }
+  }
+}
