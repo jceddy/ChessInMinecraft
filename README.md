@@ -1,2 +1,2 @@
 # ChessInMinecraft
-Chess in Minecraft (Bedrock)
+Chess in Minecraft (Bedrock) ♟️
