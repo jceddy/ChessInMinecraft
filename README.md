@@ -136,6 +136,30 @@ To build it yourself instead:
 4. Get the block with `/give @s chess:chess_set` (or find it in the
    Construction tab of the creative inventory) and place it.
 
+### Versioning
+
+Both packs' `header.version` (and their `modules[].version`) are bumped
+together, in lockstep, with every change — they must match exactly, since
+each pack declares a mutual dependency on the other's exact header
+version (see "mutual pack dependency" above), and a version mismatch
+between them will fail to load. Follow semver:
+
+- **patch** (`1.0.0` → `1.0.1`): fixes and non-functional changes -
+  packaging, manifests, CI, docs, refactors with no gameplay effect.
+- **minor** (`1.0.1` → `1.1.0`): backward-compatible functional changes -
+  new features, UI changes, anything a player would notice but that
+  doesn't break existing games or require re-joining.
+- **major** (`1.1.0` → `2.0.0`): breaking changes - anything that would
+  invalidate in-progress saved games (e.g. a change to the dynamic
+  property schema in `gameManager.js`) or require a different Minecraft
+  version.
+
+When bumping, update: both manifests' `header.version`, both manifests'
+`modules[].version`, and *both* cross-referencing `dependencies` entries
+(`behavior_pack/manifest.json`'s dependency on the resource pack's uuid,
+and `resource_pack/manifest.json`'s dependency on the behavior pack's
+uuid) — all four numbers must agree.
+
 ### If the pack fails to load with a script API version error
 
 Minecraft's Script API module versions (`@minecraft/server`,
