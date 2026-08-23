@@ -129,8 +129,10 @@ To build it yourself instead:
    double-click it — Minecraft will import both packs at once.)
 2. Open the `.mcpack`/`.mcaddon` file(s) with Minecraft Bedrock installed;
    they'll import automatically.
-3. In your world settings, enable both the **Chess Set** behavior pack and
-   resource pack. No experimental toggles are needed.
+3. In your world settings, activate the **Chess Set** behavior pack (under
+   Behavior Packs) or resource pack (under Resource Packs) — the two
+   declare a mutual dependency on each other, so activating either one
+   automatically pulls in the other. No experimental toggles are needed.
 4. Get the block with `/give @s chess:chess_set` (or find it in the
    Construction tab of the creative inventory) and place it.
 
