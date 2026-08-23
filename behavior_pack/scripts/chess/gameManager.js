@@ -112,4 +112,14 @@ export const ChessGameManager = {
     }
     return null;
   },
+
+  /** Finds the active game session (if any) that `playerId` is currently
+   * playing in, e.g. to resolve a "resign" chat command to the right
+   * board without requiring the player to be looking at it. */
+  findActiveSessionForPlayer(playerId) {
+    for (const session of sessions.values()) {
+      if (session.status === "active" && session.isParticipant(playerId)) return session;
+    }
+    return null;
+  },
 };

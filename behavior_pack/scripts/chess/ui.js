@@ -1,7 +1,7 @@
 import { system } from "@minecraft/server";
 import { ActionFormData, ModalFormData, MessageFormData } from "@minecraft/server-ui";
 import { ChessGameManager } from "./gameManager.js";
-import { squareName, pieceColor, PIECE_GLYPHS, PIECE_NAMES } from "./engine.js";
+import { squareName, pieceColor, PIECE_GLYPHS } from "./engine.js";
 
 const PROMOTION_CHOICES = [
   { key: "Q", label: "Queen" },
@@ -100,14 +100,17 @@ const DISPLAY_ORDER = (() => {
   return order;
 })();
 
+/** Compact label for a single grid cell: the board's visual layout (a
+ * literal 8x8 grid, see resource_pack/ui/server_form.json) already conveys
+ * which square is which by position, so cells only need a piece glyph plus
+ * a color cue for selection/legal-move state - not the full square name. */
 function renderSquareLabel(engine, sqIndex, selection, legalTargets) {
   const piece = engine.board[sqIndex];
-  const name = squareName(sqIndex);
-  let text = piece ? `${PIECE_GLYPHS[piece]} ${PIECE_NAMES[piece]} (${pieceColor(piece) === "w" ? "White" : "Black"})` : "empty";
-  let prefix = "  ";
-  if (selection === sqIndex) prefix = "▶ ";
-  else if (legalTargets.includes(sqIndex)) prefix = "• ";
-  return `${prefix}${name}: ${text}`;
+  const isSelected = selection === sqIndex;
+  const isTarget = legalTargets.includes(sqIndex);
+  const glyph = piece ? PIECE_GLYPHS[piece] : isTarget ? "•" : " ";
+  const colorCode = isSelected ? "§e" : isTarget ? "§a" : piece ? (pieceColor(piece) === "w" ? "§f" : "§7") : "§8";
+  return `${colorCode}${glyph}`;
 }
 
 export function openBoard(session, player) {
@@ -121,6 +124,7 @@ export function openBoard(session, player) {
   const form = new ActionFormData().title(`Chess - ${turnColor} to move${inCheck ? " (Check!)" : ""}`);
 
   let body = `White: ${session.white ? session.white.name : "-"}   Black: ${session.black ? session.black.name : "-"}\n`;
+  body += "Board reads rank 8 at top, a-h left to right - like looking at it from White's side.\n";
   if (engine.lastMove) {
     body += `Last move: ${squareName(engine.lastMove.from)} to ${squareName(engine.lastMove.to)}\n`;
   }
@@ -129,29 +133,21 @@ export function openBoard(session, player) {
   } else if (engine.turn !== myColor) {
     body += "\nWaiting for your opponent's move...";
   } else if (selection == null) {
-    body += "\nSelect one of your pieces to move.";
+    body += "\nTap one of your pieces to select it.";
   } else {
-    body += `\nSelected ${squareName(selection)}. Choose a destination (marked with •), or tap it again to cancel.`;
+    body += "\nTap a highlighted square to move there, or tap the selected piece again to cancel.";
+  }
+  if (myColor && session.status === "active") {
+    body += "\nType \"resign\" in chat to resign.";
   }
   form.body(body);
 
-  const actions = [];
-
-  actions.push({ type: "refresh" });
-  form.button("Refresh Board");
-
-  if (selection != null) {
-    actions.push({ type: "clear" });
-    form.button("Cancel Selection");
-  }
-
-  if (myColor && session.status === "active") {
-    actions.push({ type: "resign" });
-    form.button("Resign");
-  }
-
+  // Exactly 64 buttons, one per square in DISPLAY_ORDER - the resource
+  // pack's server_form.json override renders a form with exactly this many
+  // buttons as an 8x8 grid instead of a vertical list. Keep this list free
+  // of any extra (non-square) buttons or the grid layout breaks.
+  const actions = DISPLAY_ORDER.map((sq) => ({ type: "square", sq }));
   for (const sqIndex of DISPLAY_ORDER) {
-    actions.push({ type: "square", sq: sqIndex });
     form.button(renderSquareLabel(engine, sqIndex, selection, legalTargets));
   }
 
@@ -159,17 +155,7 @@ export function openBoard(session, player) {
     if (response.canceled || response.selection === undefined) return;
     const action = actions[response.selection];
     if (!action) return;
-
-    if (action.type === "refresh") {
-      openBoard(session, player);
-    } else if (action.type === "clear") {
-      session.selections.delete(player.id);
-      openBoard(session, player);
-    } else if (action.type === "resign") {
-      confirmResign(session, player);
-    } else if (action.type === "square") {
-      handleSquareTap(session, player, myColor, selection, action.sq);
-    }
+    handleSquareTap(session, player, myColor, selection, action.sq);
   }).catch(() => {});
 }
 
@@ -280,20 +266,9 @@ function broadcastMove(session, mover, move, status) {
   }
 }
 
-function confirmResign(session, player) {
-  const form = new MessageFormData()
-    .title("Resign")
-    .body("Are you sure you want to resign this game?")
-    .button1("Yes, resign")
-    .button2("No, go back");
-
-  form.show(player).then((res) => {
-    if (res.canceled || res.selection !== 0) return openBoard(session, player);
-    resign(session, player);
-  }).catch(() => {});
-}
-
-function resign(session, player) {
+/** Resigns `player` from their game immediately (no confirmation dialog -
+ * this is invoked from a chat command, see main.js). */
+export function resign(session, player) {
   const myColor = session.colorOf(player.id);
   const winnerColor = myColor === "w" ? "b" : "w";
   const winnerName = winnerColor === "w" ? session.white.name : session.black.name;
