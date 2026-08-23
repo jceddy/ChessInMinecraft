@@ -1,0 +1,38 @@
+name: Build .mcaddon
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate JSON files
+        run: |
+          set -e
+          for f in $(find behavior_pack resource_pack -name "*.json"); do
+            python3 -c "import json,re; json.loads(re.sub(r'/\*.*?\*/', '', open('$f').read(), flags=re.DOTALL))" \
+              || { echo "Invalid JSON: $f"; exit 1; }
+          done
+
+      - name: Read version from manifest
+        id: version
+        run: |
+          version=$(python3 -c "import json; print('.'.join(str(n) for n in json.load(open('behavior_pack/manifest.json'))['header']['version']))")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Build .mcaddon
+        run: |
+          mkdir -p dist
+          zip -r "dist/ChessSet-${{ steps.version.outputs.version }}.mcaddon" behavior_pack resource_pack -x "*.DS_Store"
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ChessSet-${{ steps.version.outputs.version }}-${{ github.sha }}
+          path: dist/*.mcaddon
+          if-no-files-found: error

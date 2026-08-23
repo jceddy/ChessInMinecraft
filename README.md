@@ -115,6 +115,13 @@ resource_pack/
 
 ## Installing
 
+Every push builds a ready-to-use `.mcaddon` automatically — see
+[Actions](../../actions/workflows/build-mcaddon.yml), open the latest run,
+and download the `ChessSet-<version>-<sha>` artifact from its Summary page.
+No zipping required; skip to step 2 below.
+
+To build it yourself instead:
+
 1. Zip the `behavior_pack/` folder and rename it to
    `ChessSet_BP.mcpack`. Do the same for `resource_pack/` →
    `ChessSet_RP.mcpack`.
