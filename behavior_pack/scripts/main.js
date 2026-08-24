@@ -13,13 +13,13 @@ function blockKey(block) {
 
 // Announced unconditionally, before anything that could fail below, so a
 // content-log check can always confirm which build actually loaded.
-console.warn("[chess] main.js loaded (v1.0.8, with block custom component interaction)");
+console.warn("[chess] main.js loaded (v1.0.9)");
 
 // blockKey -> Date.now() at placement. Populated by the optional
 // playerPlaceBlock handler further down; read here to ignore the interact
 // that a placement click itself can trigger for the block that just
 // appeared, so the UI doesn't pop open on placement instead of a later,
-// deliberate interaction. Shared by both interaction paths below.
+// deliberate interaction.
 const recentlyPlaced = new Map();
 
 function onChessBlockInteract(block, player) {
@@ -41,24 +41,21 @@ function onChessBlockInteract(block, player) {
   }
 }
 
-// Primary interaction path: a block-scoped custom component bound directly
-// to chess:chess_set via "minecraft:custom_components" in its block JSON.
-// Diagnostic logging (kept below) proved that the global
-// world.afterEvents.playerInteractWithBlock event - which fires reliably
-// for every vanilla block tested (crafting table, furnace, grass block),
-// identically right-clicked, even after ruling out a stale block instance
-// and a non-default collision box - never once fired for this custom
-// block. This is the documented mechanism for script-driven custom blocks
-// (see https://github.com/MicrosoftDocs/minecraft-creator, "Building with
-// Custom Components"), registered separately per block rather than
-// through a world-wide listener.
+// Interaction is handled by a block-scoped custom component bound directly
+// to chess:chess_set via "minecraft:custom_components" in its block JSON,
+// rather than the global world.afterEvents.playerInteractWithBlock event.
+// Diagnostic testing (see the 1.0.6-1.0.8 history) showed the global event
+// never fired for this custom block prior to 1.0.8, so both were kept
+// registered as a belt-and-suspenders measure - but with the custom
+// component confirmed working, the global event has started firing for
+// this block too (likely a side effect of the format_version/
+// min_engine_version bump or the custom_components declaration itself),
+// and having both active opened the UI twice per click. Only this one
+// path is registered now.
 try {
   world.beforeEvents.worldInitialize.subscribe((initEvent) => {
     initEvent.blockComponentRegistry.registerCustomComponent("chess:interact", {
       onPlayerInteract(event) {
-        // TEMPORARY DIAGNOSTIC (remove once interaction is confirmed
-        // working): confirms this registration path is actually reached.
-        console.warn(`[chess][diag] custom component onPlayerInteract fired: typeId=${event.block ? event.block.typeId : "<no block>"} player=${event.player ? event.player.name : "<no player>"}`);
         onChessBlockInteract(event.block, event.player);
       },
     });
@@ -66,18 +63,6 @@ try {
 } catch (err) {
   console.warn(`[chess] failed to register chess:interact block custom component: ${err}`);
 }
-
-// Kept registered as a harmless fallback/diagnostic: this is the event
-// that reliably fires for every vanilla block but has not been observed
-// to fire for chess:chess_set on this install (see comment above). If a
-// future game version does route interaction through it for custom
-// blocks too, this still works correctly via the same shared handler.
-world.afterEvents.playerInteractWithBlock.subscribe((event) => {
-  const { block, player } = event;
-  console.warn(`[chess][diag] playerInteractWithBlock fired: typeId=${block ? block.typeId : "<no block>"} player=${player ? player.name : "<no player>"}`);
-  if (!block || block.typeId !== CHESS_BLOCK_ID) return;
-  onChessBlockInteract(block, player);
-});
 
 // Suppresses the placement-triggered interact (see recentlyPlaced above).
 // Entries are cleared by elapsed wall-clock time at read-time, not a
