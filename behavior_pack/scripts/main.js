@@ -4,39 +4,34 @@ import { handleBlockInteract, resign } from "./chess/ui.js";
 
 const CHESS_BLOCK_ID = "chess:chess_set";
 const RESIGN_KEYWORD = "resign";
+const PLACEMENT_SUPPRESS_MS = 750;
 
 function blockKey(block) {
   const { x, y, z } = block.location;
   return `${block.dimension.id}_${x}_${y}_${z}`;
 }
 
-// The right-click that places the block can also fire
-// playerInteractWithBlock for the block that just appeared, which popped
-// the game UI immediately on placement instead of on a later, deliberate
-// interaction. Record when each chess_set block was placed and ignore an
-// interact event landing on one within PLACEMENT_SUPPRESS_MS - a genuine
-// follow-up click arriving that fast from the same player is not a
-// realistic scenario.
-//
-// Entries are checked and cleared by elapsed wall-clock time (Date.now(),
-// always available) rather than a scheduled system.runTimeout callback:
-// an earlier version relied on runTimeout to remove the entry, but if
-// that callback doesn't fire on a given Script API version, the entry
-// never clears and the block is silently, permanently blocked from ever
-// responding to interaction again - which is worse than the bug it fixed.
-const PLACEMENT_SUPPRESS_MS = 750;
-const recentlyPlaced = new Map(); // blockKey -> Date.now() at placement
+// Announced unconditionally, before anything that could fail below, so a
+// content-log check can always confirm which build actually loaded.
+console.warn("[chess] main.js loaded (v1.0.5)");
 
-if (world.afterEvents?.playerPlaceBlock?.subscribe) {
-  world.afterEvents.playerPlaceBlock.subscribe((event) => {
-    const { block } = event;
-    if (!block || block.typeId !== CHESS_BLOCK_ID) return;
-    recentlyPlaced.set(blockKey(block), Date.now());
-  });
-} else {
-  console.warn("[chess] no playerPlaceBlock event available in this Script API version; the block's UI may briefly open on placement.");
-}
+// blockKey -> Date.now() at placement. Populated by the optional
+// playerPlaceBlock handler further down; read here to ignore the interact
+// event the placement click itself can trigger for the block that just
+// appeared, so the UI doesn't pop open on placement instead of a later,
+// deliberate interaction.
+const recentlyPlaced = new Map();
 
+// This is the one subscription the whole add-on depends on, so it is
+// registered first and unconditionally, before any other feature-detection
+// below. Past bugs on this exact install (the chatSend crash, and very
+// likely this one) came from merely *accessing* an event property that
+// isn't supported in this Script API version - which can throw instead of
+// evaluating to undefined, and optional chaining does not protect against
+// a throwing property access, only against a null/undefined base. A throw
+// at the top level of this file aborts every statement after it, so
+// anything that isn't guaranteed-safe must come after this registration
+// and be wrapped in its own try/catch, never before it.
 world.afterEvents.playerInteractWithBlock.subscribe((event) => {
   const { block, player } = event;
   if (!block || block.typeId !== CHESS_BLOCK_ID) return;
@@ -57,18 +52,34 @@ world.afterEvents.playerInteractWithBlock.subscribe((event) => {
   }
 });
 
+// Suppresses the placement-triggered interact (see recentlyPlaced above).
+// Entries are cleared by elapsed wall-clock time at read-time, not a
+// scheduled system.runTimeout callback (an earlier version relied on one,
+// but if it never fires the block would be permanently unresponsive
+// instead - see the 1.0.4 fix). Optional and wrapped in try/catch: if this
+// event isn't available or accessing it throws, the block's UI may briefly
+// open on placement, but interaction itself - registered above - keeps
+// working regardless.
+try {
+  if (world.afterEvents?.playerPlaceBlock?.subscribe) {
+    world.afterEvents.playerPlaceBlock.subscribe((event) => {
+      const { block } = event;
+      if (!block || block.typeId !== CHESS_BLOCK_ID) return;
+      recentlyPlaced.set(blockKey(block), Date.now());
+    });
+  } else {
+    console.warn("[chess] no playerPlaceBlock event available in this Script API version; the block's UI may briefly open on placement.");
+  }
+} catch (err) {
+  console.warn(`[chess] failed to register playerPlaceBlock handler: ${err}`);
+}
+
 // Resigning is a typed chat command rather than a board button: the board
 // UI is now exactly 64 buttons (one per square) so the resource pack can
 // render it as an 8x8 grid, leaving no room for extra action buttons.
-//
-// world.beforeEvents.chatSend isn't present on every Script API version
-// this pack might load against, and a missing/renamed event here must not
-// crash the whole script (it previously did: "cannot read property
-// 'subscribe' of undefined"), which would also take the block-interact
-// handler above down with it. Feature-detect instead of assuming, and
-// fall back to the non-cancelable afterEvents.chatSend (the resign
-// message stays visible in chat, which is a minor cosmetic wart, not a
-// functional problem) if the cancelable beforeEvent isn't available.
+// Optional and wrapped the same way as playerPlaceBlock above, for the
+// same reason: a missing or throwing chatSend event must disable only the
+// resign command, never the block-interact handler above it.
 function handleResignChat(event) {
   if (event.message.trim().toLowerCase() !== RESIGN_KEYWORD) return;
   const session = ChessGameManager.findActiveSessionForPlayer(event.sender.id);
@@ -78,10 +89,14 @@ function handleResignChat(event) {
   system.run(() => resign(session, event.sender));
 }
 
-if (world.beforeEvents?.chatSend?.subscribe) {
-  world.beforeEvents.chatSend.subscribe(handleResignChat);
-} else if (world.afterEvents?.chatSend?.subscribe) {
-  world.afterEvents.chatSend.subscribe(handleResignChat);
-} else {
-  console.warn("[chess] no chatSend event available in this Script API version; the \"resign\" chat command is disabled.");
+try {
+  if (world.beforeEvents?.chatSend?.subscribe) {
+    world.beforeEvents.chatSend.subscribe(handleResignChat);
+  } else if (world.afterEvents?.chatSend?.subscribe) {
+    world.afterEvents.chatSend.subscribe(handleResignChat);
+  } else {
+    console.warn("[chess] no chatSend event available in this Script API version; the \"resign\" chat command is disabled.");
+  }
+} catch (err) {
+  console.warn(`[chess] failed to register chat resign handler: ${err}`);
 }
