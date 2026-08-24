@@ -1,23 +1,23 @@
 {
   "format_version": 2,
   "header": {
-    "name": "Chess Set",
-    "description": "Textures and models for the Chess Set add-on block.",
+    "name": "Chess Set v1.0.2",
+    "description": "[v1.0.2] Textures and models for the Chess Set add-on block.",
     "uuid": "bfb3fcc0-39c6-48b4-b2e9-97561932113d",
-    "version": [1, 0, 1],
+    "version": [1, 0, 2],
     "min_engine_version": [1, 21, 0]
   },
   "modules": [
     {
       "type": "resources",
       "uuid": "6c989d4a-fb41-4ba2-b012-9672007f2c42",
-      "version": [1, 0, 1]
+      "version": [1, 0, 2]
     }
   ],
   "dependencies": [
     {
       "uuid": "6ae535ab-8022-44b9-baa4-0699f16b7eef",
-      "version": [1, 0, 1]
+      "version": [1, 0, 2]
     }
   ]
 }
