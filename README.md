@@ -164,7 +164,13 @@ When bumping, update: both manifests' `header.version`, both manifests'
 `modules[].version`, and *both* cross-referencing `dependencies` entries
 (`behavior_pack/manifest.json`'s dependency on the resource pack's uuid,
 and `resource_pack/manifest.json`'s dependency on the behavior pack's
-uuid) — all four numbers must agree.
+uuid) — all four numbers must agree. Also update the version string
+embedded in both packs' `header.name`/`header.description`, and in
+`resource_pack/texts/en_US.lang`'s `pack.name`/`pack.description` (which
+override the resource pack's header for display) - so the version is
+visible in the pack list in-game, which is what makes bug reports like
+"I got this error on the pack I just installed" traceable to a specific
+build.
 
 ### If the pack fails to load with a script API version error
 

@@ -5,7 +5,7 @@
     "textures": {
       "up": "chess_set_top",
       "down": "chess_set_side",
-      "*": "chess_set_side"
+      "side": "chess_set_side"
     }
   }
 }
