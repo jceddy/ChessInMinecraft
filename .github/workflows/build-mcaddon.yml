@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       - name: Validate JSON files
         run: |
@@ -31,7 +31,7 @@ jobs:
           zip -r "dist/ChessSet-${{ steps.version.outputs.version }}.mcaddon" behavior_pack resource_pack -x "*.DS_Store"
 
       - name: Upload build artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ChessSet-${{ steps.version.outputs.version }}-${{ github.sha }}
           path: dist/*.mcaddon

@@ -139,13 +139,14 @@ To build it yourself instead:
 ### Versioning
 
 Both packs' `header.version` (and their `modules[].version`) are bumped
-together, in lockstep, with every change — they must match exactly, since
-each pack declares a mutual dependency on the other's exact header
-version (see "mutual pack dependency" above), and a version mismatch
-between them will fail to load. Follow semver:
+together, in lockstep, with every change that touches `behavior_pack/` or
+`resource_pack/` content — they must match exactly, since each pack
+declares a mutual dependency on the other's exact header version (see
+"mutual pack dependency" above), and a version mismatch between them will
+fail to load. Follow semver:
 
-- **patch** (`1.0.0` → `1.0.1`): fixes and non-functional changes -
-  packaging, manifests, CI, docs, refactors with no gameplay effect.
+- **patch** (`1.0.0` → `1.0.1`): fixes and non-functional pack changes -
+  manifests, refactors, texture/model tweaks with no gameplay effect.
 - **minor** (`1.0.1` → `1.1.0`): backward-compatible functional changes -
   new features, UI changes, anything a player would notice but that
   doesn't break existing games or require re-joining.
@@ -153,6 +154,11 @@ between them will fail to load. Follow semver:
   invalidate in-progress saved games (e.g. a change to the dynamic
   property schema in `gameManager.js`) or require a different Minecraft
   version.
+
+Changes that don't touch pack content at all - CI workflows, this README,
+repo tooling - don't need a version bump: nothing about the built
+`.mcaddon` actually changed, so bumping would just produce two
+byte-identical artifacts under different version numbers.
 
 When bumping, update: both manifests' `header.version`, both manifests'
 `modules[].version`, and *both* cross-referencing `dependencies` entries
