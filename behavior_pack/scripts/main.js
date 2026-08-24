@@ -13,36 +13,17 @@ function blockKey(block) {
 
 // Announced unconditionally, before anything that could fail below, so a
 // content-log check can always confirm which build actually loaded.
-console.warn("[chess] main.js loaded (v1.0.7, with diagnostic interact logging)");
+console.warn("[chess] main.js loaded (v1.0.8, with block custom component interaction)");
 
 // blockKey -> Date.now() at placement. Populated by the optional
 // playerPlaceBlock handler further down; read here to ignore the interact
-// event the placement click itself can trigger for the block that just
+// that a placement click itself can trigger for the block that just
 // appeared, so the UI doesn't pop open on placement instead of a later,
-// deliberate interaction.
+// deliberate interaction. Shared by both interaction paths below.
 const recentlyPlaced = new Map();
 
-// This is the one subscription the whole add-on depends on, so it is
-// registered first and unconditionally, before any other feature-detection
-// below. Past bugs on this exact install (the chatSend crash, and very
-// likely this one) came from merely *accessing* an event property that
-// isn't supported in this Script API version - which can throw instead of
-// evaluating to undefined, and optional chaining does not protect against
-// a throwing property access, only against a null/undefined base. A throw
-// at the top level of this file aborts every statement after it, so
-// anything that isn't guaranteed-safe must come after this registration
-// and be wrapped in its own try/catch, never before it.
-world.afterEvents.playerInteractWithBlock.subscribe((event) => {
-  const { block, player } = event;
-
-  // TEMPORARY DIAGNOSTIC (remove once interaction is confirmed working):
-  // logs every block interaction in the world, before any filtering, so a
-  // content-log check can show definitively whether this event fires at
-  // all in this game version, and if so, exactly what typeId it reports
-  // for the chess set block - rather than guessing at a sixth fix blind.
-  console.warn(`[chess][diag] playerInteractWithBlock fired: typeId=${block ? block.typeId : "<no block>"} player=${player ? player.name : "<no player>"}`);
-
-  if (!block || block.typeId !== CHESS_BLOCK_ID) return;
+function onChessBlockInteract(block, player) {
+  if (!block || !player) return;
 
   const key = blockKey(block);
   const placedAt = recentlyPlaced.get(key);
@@ -58,6 +39,44 @@ world.afterEvents.playerInteractWithBlock.subscribe((event) => {
     console.warn(`[chess] error handling interaction: ${err}`);
     player.sendMessage("§cSomething went wrong opening the chess game. Please try again.");
   }
+}
+
+// Primary interaction path: a block-scoped custom component bound directly
+// to chess:chess_set via "minecraft:custom_components" in its block JSON.
+// Diagnostic logging (kept below) proved that the global
+// world.afterEvents.playerInteractWithBlock event - which fires reliably
+// for every vanilla block tested (crafting table, furnace, grass block),
+// identically right-clicked, even after ruling out a stale block instance
+// and a non-default collision box - never once fired for this custom
+// block. This is the documented mechanism for script-driven custom blocks
+// (see https://github.com/MicrosoftDocs/minecraft-creator, "Building with
+// Custom Components"), registered separately per block rather than
+// through a world-wide listener.
+try {
+  world.beforeEvents.worldInitialize.subscribe((initEvent) => {
+    initEvent.blockComponentRegistry.registerCustomComponent("chess:interact", {
+      onPlayerInteract(event) {
+        // TEMPORARY DIAGNOSTIC (remove once interaction is confirmed
+        // working): confirms this registration path is actually reached.
+        console.warn(`[chess][diag] custom component onPlayerInteract fired: typeId=${event.block ? event.block.typeId : "<no block>"} player=${event.player ? event.player.name : "<no player>"}`);
+        onChessBlockInteract(event.block, event.player);
+      },
+    });
+  });
+} catch (err) {
+  console.warn(`[chess] failed to register chess:interact block custom component: ${err}`);
+}
+
+// Kept registered as a harmless fallback/diagnostic: this is the event
+// that reliably fires for every vanilla block but has not been observed
+// to fire for chess:chess_set on this install (see comment above). If a
+// future game version does route interaction through it for custom
+// blocks too, this still works correctly via the same shared handler.
+world.afterEvents.playerInteractWithBlock.subscribe((event) => {
+  const { block, player } = event;
+  console.warn(`[chess][diag] playerInteractWithBlock fired: typeId=${block ? block.typeId : "<no block>"} player=${player ? player.name : "<no player>"}`);
+  if (!block || block.typeId !== CHESS_BLOCK_ID) return;
+  onChessBlockInteract(block, player);
 });
 
 // Suppresses the placement-triggered interact (see recentlyPlaced above).
@@ -66,8 +85,7 @@ world.afterEvents.playerInteractWithBlock.subscribe((event) => {
 // but if it never fires the block would be permanently unresponsive
 // instead - see the 1.0.4 fix). Optional and wrapped in try/catch: if this
 // event isn't available or accessing it throws, the block's UI may briefly
-// open on placement, but interaction itself - registered above - keeps
-// working regardless.
+// open on placement, but interaction itself keeps working regardless.
 try {
   if (world.afterEvents?.playerPlaceBlock?.subscribe) {
     world.afterEvents.playerPlaceBlock.subscribe((event) => {
@@ -87,7 +105,7 @@ try {
 // render it as an 8x8 grid, leaving no room for extra action buttons.
 // Optional and wrapped the same way as playerPlaceBlock above, for the
 // same reason: a missing or throwing chatSend event must disable only the
-// resign command, never the block-interact handler above it.
+// resign command, never anything else.
 function handleResignChat(event) {
   if (event.message.trim().toLowerCase() !== RESIGN_KEYWORD) return;
   const session = ChessGameManager.findActiveSessionForPlayer(event.sender.id);

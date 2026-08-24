@@ -1,5 +1,5 @@
 {
-  "format_version": "1.21.0",
+  "format_version": "1.21.10",
   "minecraft:block": {
     "description": {
       "identifier": "chess:chess_set",
@@ -8,6 +8,7 @@
       }
     },
     "components": {
+      "minecraft:custom_components": ["chess:interact"],
       "minecraft:geometry": "geometry.chess_set",
       "minecraft:material_instances": {
         "*": { "texture": "chess_set_side", "render_method": "opaque" },
