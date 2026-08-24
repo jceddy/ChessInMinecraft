@@ -14,14 +14,8 @@
         "up": { "texture": "chess_set_top", "render_method": "opaque" },
         "down": { "texture": "chess_set_side", "render_method": "opaque" }
       },
-      "minecraft:collision_box": {
-        "origin": [-8, 0, -8],
-        "size": [16, 14, 16]
-      },
-      "minecraft:selection_box": {
-        "origin": [-8, 0, -8],
-        "size": [16, 14, 16]
-      },
+      "minecraft:collision_box": true,
+      "minecraft:selection_box": true,
       "minecraft:destructible_by_mining": {
         "seconds_to_destroy": 2.5
       },

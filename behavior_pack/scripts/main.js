@@ -13,7 +13,7 @@ function blockKey(block) {
 
 // Announced unconditionally, before anything that could fail below, so a
 // content-log check can always confirm which build actually loaded.
-console.warn("[chess] main.js loaded (v1.0.6, with diagnostic interact logging)");
+console.warn("[chess] main.js loaded (v1.0.7, with diagnostic interact logging)");
 
 // blockKey -> Date.now() at placement. Populated by the optional
 // playerPlaceBlock handler further down; read here to ignore the interact
