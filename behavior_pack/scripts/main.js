@@ -5,9 +5,35 @@ import { handleBlockInteract, resign } from "./chess/ui.js";
 const CHESS_BLOCK_ID = "chess:chess_set";
 const RESIGN_KEYWORD = "resign";
 
+function blockKey(block) {
+  const { x, y, z } = block.location;
+  return `${block.dimension.id}_${x}_${y}_${z}`;
+}
+
+// The right-click that places the block can also fire
+// playerInteractWithBlock for the block that just appeared, which popped
+// the game UI immediately on placement instead of on a later, deliberate
+// interaction. Track blocks placed in the last few ticks and ignore an
+// interact event that lands on one of them - a genuine follow-up click
+// arriving that fast from the same player is not a realistic scenario.
+const recentlyPlaced = new Set();
+
+if (world.afterEvents?.playerPlaceBlock?.subscribe) {
+  world.afterEvents.playerPlaceBlock.subscribe((event) => {
+    const { block } = event;
+    if (!block || block.typeId !== CHESS_BLOCK_ID) return;
+    const key = blockKey(block);
+    recentlyPlaced.add(key);
+    system.runTimeout(() => recentlyPlaced.delete(key), 5);
+  });
+} else {
+  console.warn("[chess] no playerPlaceBlock event available in this Script API version; the block's UI may briefly open on placement.");
+}
+
 world.afterEvents.playerInteractWithBlock.subscribe((event) => {
   const { block, player } = event;
   if (!block || block.typeId !== CHESS_BLOCK_ID) return;
+  if (recentlyPlaced.has(blockKey(block))) return;
 
   const session = ChessGameManager.getSession(block);
   try {

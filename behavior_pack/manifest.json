@@ -1,24 +1,24 @@
 {
   "format_version": 2,
   "header": {
-    "name": "Chess Set v1.0.2",
-    "description": "[v1.0.2] Adds a playable chess set block. Two players can join and play a full game of chess together.",
+    "name": "Chess Set v1.0.3",
+    "description": "[v1.0.3] Adds a playable chess set block. Two players can join and play a full game of chess together.",
     "uuid": "6ae535ab-8022-44b9-baa4-0699f16b7eef",
-    "version": [1, 0, 2],
+    "version": [1, 0, 3],
     "min_engine_version": [1, 21, 0]
   },
   "modules": [
     {
       "type": "data",
       "uuid": "3d5c1b0d-2f36-4d2a-8e6b-2c1a5a9e7c11",
-      "version": [1, 0, 2]
+      "version": [1, 0, 3]
     },
     {
       "type": "script",
       "language": "javascript",
       "uuid": "5aa60851-69c3-4302-b7fa-4a06b4932332",
       "entry": "scripts/main.js",
-      "version": [1, 0, 2]
+      "version": [1, 0, 3]
     }
   ],
   "dependencies": [
@@ -32,7 +32,7 @@
     },
     {
       "uuid": "bfb3fcc0-39c6-48b4-b2e9-97561932113d",
-      "version": [1, 0, 2]
+      "version": [1, 0, 3]
     }
   ]
 }
