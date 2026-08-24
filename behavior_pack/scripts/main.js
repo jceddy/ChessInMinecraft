@@ -13,18 +13,25 @@ function blockKey(block) {
 // The right-click that places the block can also fire
 // playerInteractWithBlock for the block that just appeared, which popped
 // the game UI immediately on placement instead of on a later, deliberate
-// interaction. Track blocks placed in the last few ticks and ignore an
-// interact event that lands on one of them - a genuine follow-up click
-// arriving that fast from the same player is not a realistic scenario.
-const recentlyPlaced = new Set();
+// interaction. Record when each chess_set block was placed and ignore an
+// interact event landing on one within PLACEMENT_SUPPRESS_MS - a genuine
+// follow-up click arriving that fast from the same player is not a
+// realistic scenario.
+//
+// Entries are checked and cleared by elapsed wall-clock time (Date.now(),
+// always available) rather than a scheduled system.runTimeout callback:
+// an earlier version relied on runTimeout to remove the entry, but if
+// that callback doesn't fire on a given Script API version, the entry
+// never clears and the block is silently, permanently blocked from ever
+// responding to interaction again - which is worse than the bug it fixed.
+const PLACEMENT_SUPPRESS_MS = 750;
+const recentlyPlaced = new Map(); // blockKey -> Date.now() at placement
 
 if (world.afterEvents?.playerPlaceBlock?.subscribe) {
   world.afterEvents.playerPlaceBlock.subscribe((event) => {
     const { block } = event;
     if (!block || block.typeId !== CHESS_BLOCK_ID) return;
-    const key = blockKey(block);
-    recentlyPlaced.add(key);
-    system.runTimeout(() => recentlyPlaced.delete(key), 5);
+    recentlyPlaced.set(blockKey(block), Date.now());
   });
 } else {
   console.warn("[chess] no playerPlaceBlock event available in this Script API version; the block's UI may briefly open on placement.");
@@ -33,7 +40,13 @@ if (world.afterEvents?.playerPlaceBlock?.subscribe) {
 world.afterEvents.playerInteractWithBlock.subscribe((event) => {
   const { block, player } = event;
   if (!block || block.typeId !== CHESS_BLOCK_ID) return;
-  if (recentlyPlaced.has(blockKey(block))) return;
+
+  const key = blockKey(block);
+  const placedAt = recentlyPlaced.get(key);
+  if (placedAt !== undefined) {
+    if (Date.now() - placedAt < PLACEMENT_SUPPRESS_MS) return;
+    recentlyPlaced.delete(key);
+  }
 
   const session = ChessGameManager.getSession(block);
   try {
