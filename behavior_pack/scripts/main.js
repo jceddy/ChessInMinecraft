@@ -13,7 +13,7 @@ function blockKey(block) {
 
 // Announced unconditionally, before anything that could fail below, so a
 // content-log check can always confirm which build actually loaded.
-console.warn("[chess] main.js loaded (v1.0.5)");
+console.warn("[chess] main.js loaded (v1.0.6, with diagnostic interact logging)");
 
 // blockKey -> Date.now() at placement. Populated by the optional
 // playerPlaceBlock handler further down; read here to ignore the interact
@@ -34,6 +34,14 @@ const recentlyPlaced = new Map();
 // and be wrapped in its own try/catch, never before it.
 world.afterEvents.playerInteractWithBlock.subscribe((event) => {
   const { block, player } = event;
+
+  // TEMPORARY DIAGNOSTIC (remove once interaction is confirmed working):
+  // logs every block interaction in the world, before any filtering, so a
+  // content-log check can show definitively whether this event fires at
+  // all in this game version, and if so, exactly what typeId it reports
+  // for the chess set block - rather than guessing at a sixth fix blind.
+  console.warn(`[chess][diag] playerInteractWithBlock fired: typeId=${block ? block.typeId : "<no block>"} player=${player ? player.name : "<no player>"}`);
+
   if (!block || block.typeId !== CHESS_BLOCK_ID) return;
 
   const key = blockKey(block);
