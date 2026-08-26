@@ -2,15 +2,23 @@
   "format_version": "1.21.10",
   "minecraft:block": {
     "description": {
-      "identifier": "chess:chess_set",
+      "identifier": "chess:piece_white_pawn",
       "menu_category": {
-        "category": "construction"
+        "category": "none"
       }
     },
     "components": {
       "minecraft:material_instances": {
         "*": {
-          "texture": "chess_square_dark",
+          "texture": "chess_piece_white_side",
+          "render_method": "opaque"
+        },
+        "up": {
+          "texture": "chess_piece_top_white_pawn",
+          "render_method": "opaque"
+        },
+        "down": {
+          "texture": "chess_piece_top_white_pawn",
           "render_method": "opaque"
         }
       },
@@ -24,7 +32,9 @@
       },
       "minecraft:friction": 0.6,
       "minecraft:light_dampening": 0,
-      "minecraft:map_color": "#5c3c24"
+      "minecraft:custom_components": [
+        "chess:interact"
+      ]
     }
   }
 }

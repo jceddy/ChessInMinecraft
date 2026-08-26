@@ -2,10 +2,66 @@
   "format_version": [1, 1, 0],
   "chess:chess_set": {
     "sound": "wood",
-    "textures": {
-      "up": "chess_set_top",
-      "down": "chess_set_side",
-      "side": "chess_set_side"
-    }
+    "textures": "chess_square_dark"
+  },
+  "chess:square_light": {
+    "sound": "wood",
+    "textures": "chess_square_light"
+  },
+  "chess:square_dark": {
+    "sound": "wood",
+    "textures": "chess_square_dark"
+  },
+  "chess:square_highlight": {
+    "sound": "wood",
+    "textures": "chess_square_highlight"
+  },
+  "chess:piece_white_pawn": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_white_pawn", "down": "chess_piece_top_white_pawn", "side": "chess_piece_white_side" }
+  },
+  "chess:piece_white_knight": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_white_knight", "down": "chess_piece_top_white_knight", "side": "chess_piece_white_side" }
+  },
+  "chess:piece_white_bishop": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_white_bishop", "down": "chess_piece_top_white_bishop", "side": "chess_piece_white_side" }
+  },
+  "chess:piece_white_rook": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_white_rook", "down": "chess_piece_top_white_rook", "side": "chess_piece_white_side" }
+  },
+  "chess:piece_white_queen": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_white_queen", "down": "chess_piece_top_white_queen", "side": "chess_piece_white_side" }
+  },
+  "chess:piece_white_king": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_white_king", "down": "chess_piece_top_white_king", "side": "chess_piece_white_side" }
+  },
+  "chess:piece_black_pawn": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_black_pawn", "down": "chess_piece_top_black_pawn", "side": "chess_piece_black_side" }
+  },
+  "chess:piece_black_knight": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_black_knight", "down": "chess_piece_top_black_knight", "side": "chess_piece_black_side" }
+  },
+  "chess:piece_black_bishop": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_black_bishop", "down": "chess_piece_top_black_bishop", "side": "chess_piece_black_side" }
+  },
+  "chess:piece_black_rook": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_black_rook", "down": "chess_piece_top_black_rook", "side": "chess_piece_black_side" }
+  },
+  "chess:piece_black_queen": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_black_queen", "down": "chess_piece_top_black_queen", "side": "chess_piece_black_side" }
+  },
+  "chess:piece_black_king": {
+    "sound": "stone",
+    "textures": { "up": "chess_piece_top_black_king", "down": "chess_piece_top_black_king", "side": "chess_piece_black_side" }
   }
 }

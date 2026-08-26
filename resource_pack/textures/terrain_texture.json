@@ -4,11 +4,22 @@
   "padding": 8,
   "num_mip_levels": 4,
   "texture_data": {
-    "chess_set_top": {
-      "textures": "textures/blocks/chess_set_top"
-    },
-    "chess_set_side": {
-      "textures": "textures/blocks/chess_set_side"
-    }
+    "chess_square_light": { "textures": "textures/blocks/square_light" },
+    "chess_square_dark": { "textures": "textures/blocks/square_dark" },
+    "chess_square_highlight": { "textures": "textures/blocks/square_highlight" },
+    "chess_piece_white_side": { "textures": "textures/blocks/piece_white_side" },
+    "chess_piece_black_side": { "textures": "textures/blocks/piece_black_side" },
+    "chess_piece_top_white_pawn": { "textures": "textures/blocks/piece_top_white_P" },
+    "chess_piece_top_white_knight": { "textures": "textures/blocks/piece_top_white_N" },
+    "chess_piece_top_white_bishop": { "textures": "textures/blocks/piece_top_white_B" },
+    "chess_piece_top_white_rook": { "textures": "textures/blocks/piece_top_white_R" },
+    "chess_piece_top_white_queen": { "textures": "textures/blocks/piece_top_white_Q" },
+    "chess_piece_top_white_king": { "textures": "textures/blocks/piece_top_white_K" },
+    "chess_piece_top_black_pawn": { "textures": "textures/blocks/piece_top_black_P" },
+    "chess_piece_top_black_knight": { "textures": "textures/blocks/piece_top_black_N" },
+    "chess_piece_top_black_bishop": { "textures": "textures/blocks/piece_top_black_B" },
+    "chess_piece_top_black_rook": { "textures": "textures/blocks/piece_top_black_R" },
+    "chess_piece_top_black_queen": { "textures": "textures/blocks/piece_top_black_Q" },
+    "chess_piece_top_black_king": { "textures": "textures/blocks/piece_top_black_K" }
   }
 }
