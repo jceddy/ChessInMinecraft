@@ -1,7 +1,7 @@
-import { system } from "@minecraft/server";
-import { ActionFormData, ModalFormData, MessageFormData } from "@minecraft/server-ui";
+import { ModalFormData, MessageFormData, ActionFormData } from "@minecraft/server-ui";
 import { ChessGameManager } from "./gameManager.js";
-import { squareName, pieceColor, PIECE_GLYPHS } from "./engine.js";
+import { squareName, pieceColor } from "./engine.js";
+import { syncBoardVisuals } from "./board.js";
 
 const PROMOTION_CHOICES = [
   { key: "Q", label: "Queen" },
@@ -10,25 +10,13 @@ const PROMOTION_CHOICES = [
   { key: "N", label: "Knight" },
 ];
 
-/** Entry point called from main.js whenever a player interacts with a
- * chess set block. */
-export function handleBlockInteract(session, player) {
-  if (session.status === "waiting") {
-    openJoinScreen(session, player);
-  } else if (session.status === "active") {
-    openBoard(session, player);
-  } else {
-    openResultScreen(session, player);
-  }
-}
-
-function openJoinScreen(session, player) {
+export function openJoinScreen(session, player) {
   const alreadyWaiting = session.isParticipant(player.id);
 
   if (alreadyWaiting) {
     const form = new MessageFormData()
       .title("Chess Set")
-      .body("You are waiting for an opponent to join. Interact with the chess set again once someone else joins, or leave to free up your spot.")
+      .body("You are waiting for an opponent to join. Interact with the board again once someone else joins, or leave to free up your spot.")
       .button1("OK")
       .button2("Leave Game");
     form.show(player).then((res) => {
@@ -84,132 +72,83 @@ function joinGame(session, player, color) {
 }
 
 function announceGameStart(session) {
+  syncBoardVisuals(session);
   for (const entry of [session.white, session.black]) {
     const p = ChessGameManager.findOnlinePlayer(entry.id);
     if (!p) continue;
-    p.sendMessage("§aBoth players have joined - the game begins! White moves first.");
-    system.run(() => openBoard(session, p));
+    p.sendMessage("§aBoth players have joined - the game begins! White moves first. Tap a piece, then tap a highlighted square to move it. Type \"resign\" in chat to resign.");
   }
 }
 
-const DISPLAY_ORDER = (() => {
-  const order = [];
-  for (let rank = 7; rank >= 0; rank--) {
-    for (let file = 0; file < 8; file++) order.push(rank * 8 + file);
-  }
-  return order;
-})();
-
-/** Compact label for a single grid cell: the board's visual layout (a
- * literal 8x8 grid, see resource_pack/ui/server_form.json) already conveys
- * which square is which by position, so cells only need a piece glyph plus
- * a color cue for selection/legal-move state - not the full square name. */
-function renderSquareLabel(engine, sqIndex, selection, legalTargets) {
-  const piece = engine.board[sqIndex];
-  const isSelected = selection === sqIndex;
-  const isTarget = legalTargets.includes(sqIndex);
-  const glyph = piece ? PIECE_GLYPHS[piece] : isTarget ? "•" : " ";
-  const colorCode = isSelected ? "§e" : isTarget ? "§a" : piece ? (pieceColor(piece) === "w" ? "§f" : "§7") : "§8";
-  return `${colorCode}${glyph}`;
-}
-
-export function openBoard(session, player) {
+/** Handles a click on a specific physical square (0-63) of an active
+ * game's board: select a piece, move a selected piece, cancel a
+ * selection, or select a different one of your own pieces instead. */
+export function handleSquareClick(session, player, squareIndex) {
   const engine = session.engine;
   const myColor = session.colorOf(player.id);
-  const selection = myColor ? session.selections.get(player.id) ?? null : null;
-  const legalTargets = selection != null ? engine.legalMovesFrom(selection).map((m) => m.to) : [];
-
-  const turnColor = engine.turn === "w" ? "White" : "Black";
-  const inCheck = engine.isInCheck(engine.turn);
-  const form = new ActionFormData().title(`Chess - ${turnColor} to move${inCheck ? " (Check!)" : ""}`);
-
-  let body = `White: ${session.white ? session.white.name : "-"}   Black: ${session.black ? session.black.name : "-"}\n`;
-  body += "Board reads rank 8 at top, a-h left to right - like looking at it from White's side.\n";
-  if (engine.lastMove) {
-    body += `Last move: ${squareName(engine.lastMove.from)} to ${squareName(engine.lastMove.to)}\n`;
-  }
-  if (!myColor) {
-    body += "\nYou are spectating this game.";
-  } else if (engine.turn !== myColor) {
-    body += "\nWaiting for your opponent's move...";
-  } else if (selection == null) {
-    body += "\nTap one of your pieces to select it.";
-  } else {
-    body += "\nTap a highlighted square to move there, or tap the selected piece again to cancel.";
-  }
-  if (myColor && session.status === "active") {
-    body += "\nType \"resign\" in chat to resign.";
-  }
-  form.body(body);
-
-  // Exactly 64 buttons, one per square in DISPLAY_ORDER - the resource
-  // pack's server_form.json override renders a form with exactly this many
-  // buttons as an 8x8 grid instead of a vertical list. Keep this list free
-  // of any extra (non-square) buttons or the grid layout breaks.
-  const actions = DISPLAY_ORDER.map((sq) => ({ type: "square", sq }));
-  for (const sqIndex of DISPLAY_ORDER) {
-    form.button(renderSquareLabel(engine, sqIndex, selection, legalTargets));
-  }
-
-  form.show(player).then((response) => {
-    if (response.canceled || response.selection === undefined) return;
-    const action = actions[response.selection];
-    if (!action) return;
-    handleSquareTap(session, player, myColor, selection, action.sq);
-  }).catch(() => {});
-}
-
-function handleSquareTap(session, player, myColor, selection, sqIndex) {
-  const engine = session.engine;
 
   if (!myColor) {
     player.sendMessage("§cYou are only spectating this game.");
-    return openBoard(session, player);
+    return;
   }
   if (engine.turn !== myColor) {
     player.sendMessage("§cIt is not your turn.");
-    return openBoard(session, player);
+    return;
   }
+
+  const selection = session.selection;
 
   if (selection == null) {
-    const piece = engine.board[sqIndex];
-    if (!piece || pieceColor(piece) !== myColor) {
-      player.sendMessage("§cSelect one of your own pieces first.");
-      return openBoard(session, player);
-    }
-    if (engine.legalMovesFrom(sqIndex).length === 0) {
-      player.sendMessage("§cThat piece has no legal moves.");
-      return openBoard(session, player);
-    }
-    session.selections.set(player.id, sqIndex);
-    return openBoard(session, player);
+    selectPiece(session, player, myColor, squareIndex);
+    return;
   }
 
-  if (sqIndex === selection) {
-    session.selections.delete(player.id);
-    return openBoard(session, player);
+  if (squareIndex === selection) {
+    session.selection = null;
+    syncBoardVisuals(session);
+    player.sendMessage("§7Selection canceled.");
+    return;
   }
 
   const legal = engine.legalMovesFrom(selection);
-  const move = legal.find((m) => m.to === sqIndex);
+  const move = legal.find((m) => m.to === squareIndex);
 
   if (!move) {
-    const piece = engine.board[sqIndex];
-    if (piece && pieceColor(piece) === myColor && engine.legalMovesFrom(sqIndex).length > 0) {
-      session.selections.set(player.id, sqIndex);
-      return openBoard(session, player);
+    const piece = engine.board[squareIndex];
+    if (piece && pieceColor(piece) === myColor) {
+      selectPiece(session, player, myColor, squareIndex);
+      return;
     }
     player.sendMessage("§cIllegal move.");
-    return openBoard(session, player);
+    return;
   }
 
-  session.selections.delete(player.id);
+  session.selection = null;
 
   if (move.promotion) {
-    return openPromotionPrompt(session, player, selection, sqIndex);
+    openPromotionPrompt(session, player, selection, squareIndex);
+    return;
   }
 
-  finalizeMove(session, player, selection, sqIndex, null);
+  finalizeMove(session, player, selection, squareIndex, null);
+}
+
+function selectPiece(session, player, myColor, squareIndex) {
+  const engine = session.engine;
+  const piece = engine.board[squareIndex];
+  if (!piece || pieceColor(piece) !== myColor) {
+    player.sendMessage("§cSelect one of your own pieces first.");
+    return;
+  }
+  const moves = engine.legalMovesFrom(squareIndex);
+  if (moves.length === 0) {
+    player.sendMessage("§cThat piece has no legal moves.");
+    return;
+  }
+  session.selection = squareIndex;
+  syncBoardVisuals(session);
+  const targets = moves.map((m) => squareName(m.to)).join(", ");
+  player.sendMessage(`§eSelected ${squareName(squareIndex)}. Legal moves: ${targets}`);
 }
 
 function openPromotionPrompt(session, player, from, to) {
@@ -219,8 +158,8 @@ function openPromotionPrompt(session, player, from, to) {
 
   form.show(player).then((response) => {
     if (response.canceled) {
-      // Leave the move unresolved; reopen the board so the player can retry.
-      return openBoard(session, player);
+      // Leave the move unresolved; the player can tap the pawn again to retry.
+      return;
     }
     const choice = PROMOTION_CHOICES[response.formValues[0]];
     finalizeMove(session, player, from, to, choice.key);
@@ -232,7 +171,7 @@ function finalizeMove(session, player, from, to, promotion) {
   const move = engine.makeMove(from, to, promotion);
   if (!move) {
     player.sendMessage("§cThat move is no longer legal.");
-    return openBoard(session, player);
+    return;
   }
 
   const status = engine.getStatus();
@@ -241,6 +180,7 @@ function finalizeMove(session, player, from, to, promotion) {
     session.result = status;
   }
   session.save();
+  syncBoardVisuals(session);
   broadcastMove(session, player, move, status);
 }
 
@@ -253,7 +193,6 @@ function broadcastMove(session, mover, move, status) {
 
     if (status.over) {
       p.sendMessage(`§6${status.message}`);
-      system.run(() => openResultScreen(session, p));
       continue;
     }
 
@@ -261,7 +200,6 @@ function broadcastMove(session, mover, move, status) {
       p.sendMessage(`§7You played ${moveText}.`);
     } else {
       p.sendMessage(`§e${mover.name} played ${moveText}. Your turn!`);
-      system.run(() => openBoard(session, p));
     }
   }
 }
@@ -273,6 +211,7 @@ export function resign(session, player) {
   const winnerColor = myColor === "w" ? "b" : "w";
   const winnerName = winnerColor === "w" ? session.white.name : session.black.name;
   session.status = "finished";
+  session.selection = null;
   session.result = {
     over: true,
     result: "resignation",
@@ -280,17 +219,17 @@ export function resign(session, player) {
     message: `${player.name} resigned. ${winnerName} wins!`,
   };
   session.save();
+  syncBoardVisuals(session);
 
   for (const entry of [session.white, session.black]) {
     if (!entry) continue;
     const p = ChessGameManager.findOnlinePlayer(entry.id);
     if (!p) continue;
     p.sendMessage(`§6${session.result.message}`);
-    system.run(() => openResultScreen(session, p));
   }
 }
 
-function openResultScreen(session, player) {
+export function openResultScreen(session, player) {
   const message = session.result ? session.result.message : "The game has ended.";
   const isParticipant = session.isParticipant(player.id);
 
@@ -304,7 +243,18 @@ function openResultScreen(session, player) {
     if (res.canceled) return;
     if (res.selection === 1 && isParticipant) {
       session.resetToWaiting();
+      syncBoardVisuals(session);
       player.sendMessage("§aThe board has been reset. Interact with it to start a new game.");
     }
   }).catch(() => {});
+}
+
+/** Entry point for interacting with any square/piece block of a board
+ * that isn't currently mid-game (waiting for players, or finished). */
+export function handleBlockInteract(session, player) {
+  if (session.status === "waiting") {
+    openJoinScreen(session, player);
+  } else {
+    openResultScreen(session, player);
+  }
 }
